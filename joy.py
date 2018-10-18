@@ -1,4 +1,4 @@
-# File: joy.py 
+# File: joy.py
 # Purpose: Developed and collected for "Python Machine Lenaring"
 # Author: Youngsup Kim, idebtor@gmail.com
 # 2018.03.23 - creation
