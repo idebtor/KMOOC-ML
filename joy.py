@@ -1,4 +1,4 @@
-# File: joy.py
+# File: joy.py 
 # Purpose: Developed and collected for "Python Machine Lenaring"
 # Author: Youngsup Kim, idebtor@gmail.com
 # 2018.03.23 - creation
@@ -209,7 +209,7 @@ try:
 except ImportError:
     raise ImportError('You should use Python 3.x')
 
-url_base = 'http://yann.lecun.com/exdb/mnist/'
+mnist_url_base = 'http://yann.lecun.com/exdb/mnist/'
 key_file = {
     'train_img':'train-images-idx3-ubyte.gz',
     'train_label':'train-labels-idx1-ubyte.gz',
@@ -227,7 +227,7 @@ test_num = 10000
 img_dim = (28, 28)         # not (1, 28, 28)
 img_size = 784
 
-def _download(file_name):
+def _download(url_base, file_name):
     file_path = dataset_dir + "/" + file_name
     
     if os.path.exists(file_path):
@@ -239,7 +239,7 @@ def _download(file_name):
     
 def download_mnist():
     for v in key_file.values():
-        _download(v)
+        _download(mnist_url_base, v)
         
 def _load_label(file_name):
     file_path = dataset_dir + "/" + file_name
@@ -1552,19 +1552,10 @@ fashion_key_file = {
     'test_label':'fashion-t10k-labels-idx1-ubyte.gz'
 }
 
-def _download(file_name):
-    file_path = dataset_dir + "/" + file_name
-    print(file_path)
-    if os.path.exists(file_path):
-        return
-
-    print("Downloading " + file_name + " ... ", end='')
-    urllib.request.urlretrieve(fashion_url_base + file_name, file_path)
-    print("Done")
 
 def download_fashion_mnist():
     for v in fashion_key_file.values():
-        _download(v)
+        _download(fashion_url_base, v)
         
 def _fashion_convert_numpy():
     dataset = {}
