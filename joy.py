@@ -55,7 +55,7 @@ def joydata(standardized=False, shuffled=False):
         shuffled: If True, performs random shuffling of samples
             Used a fixed random seed = 1 for reproducibility
     '''
-    return getXy('data/joydata.txt', standardized, shuffled)
+    return getXy('data/joydata.txt', standardized=standardized, shuffled=shuffled)
 
 def joy_data(standardized=False, shuffled=False):
     ''' joy_data reads data/joy_data.txt file and returns the data'
@@ -65,7 +65,8 @@ def joy_data(standardized=False, shuffled=False):
         shuffled: If True, performs random shuffling of samples
             Used a fixed random seed = 1 for reproducibility
     '''
-    return getXy('data/joy_data.txt', standardized, shuffled)
+
+    return getXy('data/joy_data.txt', standardized=standardized, shuffled=shuffled)
 
 def joy_Ndata(standardized=False, shuffled=False):
     ''' joy_data reads data/joy_data.txt file and returns the data'
@@ -75,9 +76,9 @@ def joy_Ndata(standardized=False, shuffled=False):
         shuffled: If True, performs random shuffling of samples
             Used a fixed random seed = 1 for reproducibility
     '''
-    return getXy('data/joy_dataNoise.txt', standardized, shuffled)
+    return getXy('data/joy_dataNoise.txt', standardized=standardized, shuffled=shuffled)
 
-def toy_data(standardized=False, shuffled=False,):
+def toy_data(standardized=False, shuffled=False):
     ''' toy_data reads data/toy_data.txt file and returns the data'
     Parameters
         standardized: If True, performs standardization or 
@@ -85,7 +86,7 @@ def toy_data(standardized=False, shuffled=False,):
         shuffled: If True, performs random shuffling of samples
             Used a fixed random seed = 1 for reproducibility
     '''
-    return getXy('data/toy_data.txt', standardized, shuffled)
+    return getXy('data/toy_data.txt', standardized=standardized, shuffled=shuffled)
 
 
 
@@ -511,7 +512,7 @@ def save_mnist_weight(w, file_name):
 
     
 
-def show_mnist(image, inverted = False):
+def show_mnist(image, inverted = False, savefig = None):
     """
     Render a given numpy.uint8 2D array of pixel data.
     image -- 2d image
@@ -535,7 +536,8 @@ def show_mnist(image, inverted = False):
     ax.xaxis.set_ticks_position('top')
     ax.yaxis.set_ticks_position('left')
     plt.show()
-    
+    if savefig is not None:
+        plt.savefig(savefig, bbox_inches='tight', dpi=150)
     
     
 def show_mnist_grid(images, inverted = False, figsize = 10, ncols=10, maxgrid = 100):
