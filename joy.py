@@ -512,7 +512,7 @@ def save_mnist_weight(w, file_name):
 
     
 
-def show_mnist(image, inverted = False):
+def show_mnist(image, inverted = False, savefig = None):
     """
     Render a given numpy.uint8 2D array of pixel data.
     image -- 2d image
@@ -536,7 +536,8 @@ def show_mnist(image, inverted = False):
     ax.xaxis.set_ticks_position('top')
     ax.yaxis.set_ticks_position('left')
     plt.show()
-    
+    if savefig is not None:
+        plt.savefig(savefig, bbox_inches='tight', dpi=150)
     
     
 def show_mnist_grid(images, inverted = False, figsize = 10, ncols=10, maxgrid = 100):
@@ -1366,7 +1367,7 @@ class LogisticNeuron(object):
         Z1 = np.dot(self.W1, X) + self.b1
         A1 = np.tanh(Z1)
         Z2 = np.dot(self.W2, A1) + self.b2
-        A2 = joy.sigmoid(Z2)                  # yhat
+        A2 = sigmoid(Z2)                  # yhat
         assert(A2.shape == (1, X.shape[1]))
         return A1, A2 
             
@@ -1470,7 +1471,7 @@ class LogisticNeuron_stochastic(object):
     def fit(self, X, y): 
         self.cost_ = []
         self.m_samples = len(y)
-        Y = joy.one_hot_encoding(y, self.n_y)       # (m, n_y) = (m, 10)   one-hot encoding
+        Y = one_hot_encoding(y, self.n_y)       # (m, n_y) = (m, 10)   one-hot encoding
                
         for epoch in range(self.epochs):           
             for sample in range(self.m_samples):            
