@@ -573,8 +573,7 @@ def show_mnist_grid(images, inverted = False, figsize = 10, ncols=10, maxgrid = 
         else:
             plt.imshow(images[i], cmap=plt.cm.Greys_r)
         plt.axis('off')
-        
-
+    plt.tight_layout() 
 
 
 
@@ -835,7 +834,14 @@ def plot_decision_boundary(X, y, predict):
 
 
     
-def sigmoid(x):
+
+def tanh(x):
+    return (1.0 - np.exp(-2*x))/(1.0 + np.exp(-2*x))
+
+def tanh_d(x):
+    return (1 + tanh(x))*(1 - tanh(x))
+
+def sigmoid(x): 
     """
     Compute the sigmoid of x
     Arguments:
@@ -843,8 +849,23 @@ def sigmoid(x):
     Return:
     s -- sigmoid(x)
     """
-    s = 1/(1+np.exp(-x))
-    return s
+    x = np.clip(x, -500, 500)  
+    return 1/(1 + np.exp((-x)))
+
+def sigmoid_d(x):
+    return sigmoid(x) * (1 - sigmoid(x))
+
+def relu(x):
+    return np.maximum(x, 0)
+
+def relu_d(x):
+    x[x<=0] = 0
+    x[x>0] = 1
+    return x
+
+def softmax(x):
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum()
 
 
 def one_hot_encoding(y, n_y, modified=True):   
@@ -1146,10 +1167,147 @@ class AdalineSGD(object):
         return np.where(self.activation(self.net_input(X)) > mid, self.maxy, self.miny)
     
     
-    
-    
- 
 
+class MnistBGD(object):
+    """ Batch Gradient Descent for MNIST Dataset """
+    def __init__(self, n_x, n_h, n_y, eta = 0.1, epochs = 100, random_seed=1):
+        self.n_x = n_x
+        self.n_h = n_h
+        self.n_y = n_y
+        self.eta = eta
+        self.epochs = epochs
+        np.random.seed(random_seed)
+        self.W1 = 2*np.random.random((self.n_h, self.n_x)) - 1  # between -1 and 1
+        self.W2 = 2*np.random.random((self.n_y, self.n_h)) - 1  # between -1 and 1
+        
+    def forpass(self, A0):
+        Z1 = np.dot(self.W1, A0)    # hidden layer inputs
+        A1 = self.g(Z1)             # hidden layer outputs/activation func
+        Z2 = np.dot(self.W2, A1)    # output layer inputs
+        A2 = self.g(Z2)             # output layer outputs/activation func
+        return Z1, A1, Z2, A2
+
+    def fit(self, X, y):
+        self.m_samples = len(y)       
+        Y = one_hot_encoding(y, self.n_y)  
+        
+        self.cost_ = []
+        for epoch in range(self.epochs):
+            A0 = np.array(X, ndmin=2).T     
+            Y0 = np.array(Y, ndmin=2).T      
+
+            Z1 = np.dot(self.W1, A0)          
+            A1 = self.g(Z1)                  
+            Z2 = np.dot(self.W2, A1)       
+            A2 = self.g(Z2)                 
+
+            E2 = Y0 - A2                   
+            E1 = np.dot(self.W2.T, E2)          
+
+            dZ2 = E2 * self.g_prime(Z2)       
+            dZ1 = E1 * self.g_prime(Z1)  
+            
+            dW2 = self.eta * np.dot(dZ2, A1.T)
+            dW1 = self.eta * np.dot(dZ1, A0.T)
+
+            self.W2 += dW2 / self.m_samples   
+            self.W1 += dW1 / self.m_samples    
+
+            self.cost_.append(np.sqrt(np.sum(E2 * E2)))
+        return self
+
+    def predict(self, X):
+        A0 = np.array(X, ndmin=2).T         # A0: inputs
+        Z1, A1, Z2, A2 = self.forpass(A0)   # forpass
+        return A2                                       
+
+    def g(self, x):                 # activation_function: sigmoid
+        x = np.clip(x, -500, 500)   # prevent from overflow, 
+        return 1.0/(1.0+np.exp(-x)) # stackoverflow.com/questions/23128401/
+                                    # overflow-error-in-neural-networks-implementation
+    
+    def g_prime(self, x):           # activation_function: sigmoid derivative
+        return self.g(x) * (1 - self.g(x))
+    
+    def evaluate(self, Xtest, ytest):      
+        m_samples = len(ytest)
+        scores = 0        
+        A2 = self.predict(Xtest)
+        print(A2.shape)
+        yhat = np.argmax(A2, axis = 0)
+        scores += np.sum(yhat == ytest)
+        return scores/m_samples * 100
+
+ 
+class MnistBGD_LS(object):
+    """ Batch Gradient Descent with a simple learning schedule   """
+    def __init__(self, n_x, n_h1, n_y, eta = 0.1, epochs = 100, random_seed=1):
+        """ 
+        """
+        self.n_x = n_x
+        self.n_h = n_h
+        self.n_y = n_y
+        self.eta = eta
+        self.epochs = epochs
+        np.random.seed(random_seed)
+        self.W1 = 2*np.random.random((self.n_h, self.n_x)) - 1  # between -1 and 1
+        self.W2 = 2*np.random.random((self.n_y, self.n_h)) - 1  # between -1 and 1
+        
+    def forpass(self, A0):
+        Z1 = np.dot(self.W1, A0)          # hidden layer inputs
+        A1 = self.g(Z1)                      # hidden layer outputs/activation func
+        Z2 = np.dot(self.W2, A1)          # output layer inputs
+        A2 = self.g(Z2)                       # output layer outputs/activation func
+        return Z1, A1, Z2, A2
+
+    def fit(self, X, y):
+        self.cost_ = []
+        self.m_samples = len(y)       
+        Y = one_hot_encoding(y, self.n_y)     
+        # learning rate is scheduled to decrement by a step of 
+        # which the inteveral from self.eta to 0.0001 eqaully 
+        # divided by total number of iterations(epochs or 
+        # epochs * m_samples)
+        eta_scheduled = np.linspace(self.eta, 0.0001, self.epochs)
+        for epoch in range(self.epochs):
+            A0 = np.array(X, ndmin=2).T       
+            Y0 = np.array(Y, ndmin=2).T     
+
+            Z1, A1, Z2, A2 = self.forpass(A0)  
+            E2 = Y0 - A2                      
+            E1 = np.dot(self.W2.T, E2)         
+
+            dZ2 = E2 * self.g_prime(Z2)          
+            dZ1 = E1 * self.g_prime(Z1)        
+
+            eta = eta_scheduled[epoch]
+            self.W2 +=  eta * np.dot(dZ2, A1.T) / self.m_samples    
+            self.W1 +=  eta * np.dot(dZ1, A0.T) / self.m_samples    
+            self.cost_.append(np.sqrt(np.sum(E2 * E2)))
+        return self
+
+    def predict(self, X):
+        A0 = np.array(X, ndmin=2).T         # A0: inputs
+        Z1, A1, Z2, A2 = self.forpass(A0)   # forpass
+        return A2                                       
+
+    def g(self, x):                 # activation_function: sigmoid
+        x = np.clip(x, -500, 500)   # prevent from overflow, 
+        return 1.0/(1.0+np.exp(-x)) # stackoverflow.com/questions/23128401/
+                                    # overflow-error-in-neural-networks-implementation
+    
+    def g_prime(self, x):                    # activation_function: sigmoid derivative
+        return self.g(x) * (1 - self.g(x))
+    
+    def evaluate(self, Xtest, ytest):       # fully vectorized calculation
+        m_samples = len(ytest)
+        scores = 0        
+        A2 = self.predict(Xtest)
+        yhat = np.argmax(A2, axis = 0)
+        scores += np.sum(yhat == ytest)
+        return scores/m_samples * 100
+    
+    
 class MnistSGD(object):
     """
     MNIST 데이터셋을 확률적 경사하강법으로 0 ~ 9로 분류함. 
@@ -1208,7 +1366,7 @@ class MnistSGD(object):
                 Y0 = np.array(Y[m], ndmin=2).T       # Y: targets
 
                 Z1, A1, Z2, A2 = self.forpass(A0)          # forward pass
-                if m == 1:
+                if epoch == 0 and m == 0:
                     print('A0.shape={}, Y0.shape={}'.format(A0.shape, Y0.shape))
                     print('Z1.shape={}, A1.shape={}, Z2.shape={}, A2.shape={}'.
                           format(Z1.shape, A1.shape, Z2.shape, A2.shape))
@@ -1223,7 +1381,7 @@ class MnistSGD(object):
                 # back prop, error prop
                 dZ2 = E2 * self.g_prime(Z2)        # backprop      # dZ2 = E2 * A2 * (1 - A2)  
                 dZ1 = E1 * self.g_prime(Z1)        # backprop      # dZ1 = E1 * A1 * (1 - A1)  
-                if m == 1:
+                if epoch == 0 and m == 0:
                     print('E1.shape={}, E2.shape={}, dZ1.shape={}, dZ2.shape={}'.
                           format(E1.shape, E2.shape, dZ1.shape, dZ2.shape))
 
@@ -1264,6 +1422,101 @@ class MnistSGD(object):
     
 
 
+
+class MnistMiniBatchGD(object):
+    """ Mini-batch Gradient Descent
+    """
+    def __init__(self, n_x, n_h, n_y, eta = 0.1, epochs = 100, batch_size = 32, random_seed=1):
+        """ 
+        """
+        self.n_x = n_x
+        self.n_h = n_h
+        self.n_y = n_y
+        self.eta = eta
+        self.epochs = epochs
+        self.batch_size = batch_size
+        np.random.seed(random_seed)
+        self.W1 = 2*np.random.random((self.n_h, self.n_x)) - 1  # between -1 and 1
+        self.W2 = 2*np.random.random((self.n_y, self.n_h)) - 1  # between -1 and 1
+        #print('W1.shape={}, W2.shape={}'.format(self.W1.shape, self.W2.shape))
+        
+    def forpass(self, A0, train=True):
+        Z1 = np.dot(self.W1, A0)          # hidden layer inputs
+        A1 = self.g(Z1)                      # hidden layer outputs/activation func
+        '''
+        # Dropout
+        if train:
+            self.drop_units = np.random.rand(*A1.shape) > self.dropout_ratio
+            A1 = A1 * self.drop_units
+        else:
+            A1 = A1 * (1.0 - self.dropout_ratio)
+        '''
+           
+        Z2 = np.dot(self.W2, A1)          # output layer inputs
+        A2 = self.g(Z2)                       # output layer outputs/activation func
+        return Z1, A1, Z2, A2
+
+    def fit(self, X, y):
+        """ 
+        X: input dataset 
+        y: class labels
+        """
+
+        self.cost_ = []
+        m_samples = len(y)       
+        Y = one_hot_encoding(y, self.n_y)       # (m, n_y) = (m, 10)   one-hot encoding
+        #print('X.shape={}, y.shape={}, Y.shape={}'.format(X.shape, y.shape, Y.shape))
+        
+        for epoch in range(self.epochs):
+            print('Training epoch {}/{}.'.format(epoch + 1, self.epochs))
+            for i in range(0, m_samples, self.batch_size):
+                A0 = X[i: i + self.batch_size]
+                Y0 = Y[i: i + self.batch_size]
+                
+                A0 = np.array(A0, ndmin=2).T
+                Y0 = np.array(Y0, ndmin=2).T
+
+                Z1, A1, Z2, A2 = self.forpass(A0)        
+
+                E2 = Y0 - A2                 
+                E1 = np.dot(self.W2.T, E2)       
+
+                # back prop, error prop
+                dZ2 = E2 * self.g_prime(Z2)     
+                dZ1 = E1 * self.g_prime(Z1)    
+                '''
+                # Dropout
+                dZ1 = dZ1 * self.drop_units       
+                '''
+                
+                # update weights
+                self.W2 +=  self.eta * np.dot(dZ2, A1.T)     
+                self.W1 +=  self.eta * np.dot(dZ1, A0.T)    
+
+                self.cost_.append(np.sqrt(np.sum(E2 * E2)
+                                          /self.batch_size))
+        return self
+
+    def predict(self, X):
+        A0 = np.array(X, ndmin=2).T         # A0: inputs
+        Z1, A1, Z2, A2 = self.forpass(A0, train=False)   # forpass
+        return A2                                       
+
+    def g(self, x):                             # activation_function: sigmoid
+        return 1.0/(1.0+np.exp(-x))
+    
+    def g_prime(self, x):                    # activation_function: sigmoid derivative
+        return self.g(x) * (1 - self.g(x))
+    
+    def evaluate(self, Xtest, ytest):       
+        m_samples = len(ytest)
+        scores = 0        
+        A2 = self.predict(Xtest)
+        yhat = np.argmax(A2, axis = 0)
+        scores += np.sum(yhat == ytest)
+        return scores/m_samples * 100    
+    
+    
     
 class NeuralNetwork():
     """ This class implements a multi-perceptron with backpropagation. """
@@ -1596,4 +1849,210 @@ def load_fashion_mnist(normalize=True, flatten=True):
          for key in ('train_img', 'test_img'):
             dataset[key] = dataset[key].reshape(-1, 28, 28)  
 
-    return (dataset['train_img'], dataset['train_label']), (dataset['test_img'], dataset['test_label']) 
+    return (dataset['train_img'], dataset['train_label']), (dataset['test_img'], dataset['test_label'])
+
+
+
+class DeepNeuralNet(object):
+    """ implements a deep neural net. 
+        Users may specify any number of layers.
+        net_arch -- consists of a number of neurons in each layer 
+    """
+    def __init__(self, net_arch, activate = None, eta = 1.0, epochs = 100, random_seed = 1):
+        self.eta = eta
+        self.epochs = epochs
+        self.net_arch = net_arch
+        self.layers = len(net_arch)
+        self.W = []
+        self.random_seed = random_seed
+        
+        self.g       = [lambda x: sigmoid(x)   for _ in range(self.layers)]
+        self.g_prime = [lambda x: sigmoid_d(x) for _ in range(self.layers)]
+        
+        if activate is not None:
+            for i, (g, g_prime) in enumerate(zip(activate[::2], activate[1::2])):
+                self.g[i+1] = g
+                self.g_prime[i+1] = g_prime
+                
+        for i in range(len(self.g)):
+            print(type(self.g[i]), id(self.g[i]))
+        
+        #print('X.shape={}, y.shape{}'.format(X.shape, y.shape))
+        # Random initialization with range of weight values (-1,1)
+        np.random.seed(self.random_seed)
+        
+        # A place holder [None] is used to indicated "unused place".
+        self.W = [[None]]    ## the first W0 is not used.
+        for layer in range(self.layers - 1):
+            w = 2 * np.random.rand(self.net_arch[layer+1], 
+                                   self.net_arch[layer]) - 1
+            self.W.append(w)  
+            
+    def forpass(self, A0):     
+        Z = [[None]]   # Z0 is not used.
+        A = []       # A0 = X0 is used. 
+        A.append(A0)
+        for i in range(1, len(self.W)):
+            z = np.dot(self.W[i], A[i-1])
+            Z.append(z)
+            a = self.g[i](z)
+            A.append(a)
+        return Z, A
+    
+    def backprop(self, Z, A, Y):
+        # initialize empty lists to save E and dZ
+        # A place holder None is used to indicated "unused place".
+        E  = [None for x in range(self.layers)]
+        dZ = [None for x in range(self.layers)]
+        
+        # Get error at the output layer or the last layer
+        ll = self.layers - 1
+        error = Y - A[ll]
+        E[ll] = error   
+        dZ[ll] = error * self.g_prime[ll](Z[ll]) 
+        
+        # Begin from the back, from the next to last layer
+        for i in range(self.layers-2, 0, -1):
+            E[i]  = np.dot(self.W[i+1].T, E[i+1])
+            dZ[i] = E[i] * self.g_prime[i](Z[i])
+       
+        # Adjust the weights, using the backpropagation rules
+        m = Y.shape[0] # number of samples
+        for i in range(ll, 0, -1):
+            self.W[i] += self.eta * np.dot(dZ[i], A[i-1].T) / m
+        return error
+         
+    def fit(self, X, y):
+        self.cost_ = []        
+        for epoch in range(self.epochs):          
+            Z, A = self.forpass(X)        
+            cost = self.backprop(Z, A, y)   
+            self.cost_.append(
+                 np.sqrt(np.sum(cost * cost)))    
+        return self
+
+    def predict(self, X):
+        A0 = np.array(X, ndmin=2).T         # A0: inputs
+        Z, A = self.forpass(A0)     # forpass
+        return A[-1]                                       
+   
+    def evaluate(self, Xtest, ytest):       # fully vectorized calculation
+        m_samples = len(ytest)
+        scores = 0        
+        A3 = self.predict(Xtest)
+        yhat = np.argmax(A3, axis = 0)
+        scores += np.sum(yhat == ytest)
+        return scores/m_samples * 100
+    
+    
+
+class DeepNeuralNet_BGD(object):
+    """ implements a deep neural net. Users may specify any number 
+        of layers.
+        net_arch -- consists of a number of neurons in each layer 
+    """
+    def __init__(self, net_arch, activate = None, eta = 1.0, epochs = 100, random_seed = 1):
+        
+        if not isinstance(net_arch, list):
+            sys.exit('Use a list to list number of neurons in each layer.')
+        if len(net_arch) < 3:
+            sys.exit('Specify the number of neurons more than two layers.')
+                     
+        self.eta = eta
+        self.epochs = epochs
+        self.net_arch = net_arch
+        self.layers = len(net_arch)
+        self.W = []
+        self.random_seed = random_seed
+        
+        np.random.seed(self.random_seed)
+        # Random initialization with range of weight values (-1,1)
+        # A place holder None is used to indicated "unused place".
+        self.W = [[None]]    ## the first W0 is not used.
+        for layer in range(self.layers - 1):
+            w = 2 * np.random.rand(self.net_arch[layer+1], 
+                                   self.net_arch[layer]) - 1
+            self.W.append(w)
+        
+        # initialize the activation function list with sigmoid() as default
+        self.g = [lambda x: sigmoid(x) for _ in range(self.layers)]
+        self.g_prime = [lambda x: sigmoid_d(x) for _ in range(self.layers)]
+        
+        # get the user-defined activation functions and their derivatives
+        if activate is not None:
+            if len(activate) % 2 != 0:
+                sys.exit("List activation functions & its derivatives in pairwise")
+            if len(activate) > (self.layers - 1) * 2:
+                sys.exit("Too many activation functions & its derivatives encountered")
+            for i, (g, g_prime) in enumerate(zip(activate[::2], activate[1::2])):
+                self.g[i+1] = g
+                self.g_prime[i+1] = g_prime
+            
+    def forpass(self, A0):     
+        Z = [[None]] # Z0 is not used.
+        A = []       # A0 = X0 is used. 
+        A.append(A0)
+        for i in range(1, len(self.W)):
+            z = np.dot(self.W[i], A[i-1])
+            Z.append(z)
+            a = self.g[i](z)
+            A.append(a)
+        return Z, A
+    
+    def backprop(self, Z, A, Y):
+        # initialize empty lists to save E and dZ
+        # A place holder None is used to indicated "unused place".
+        E  = [None for x in range(self.layers)]
+        dZ = [None for x in range(self.layers)]
+        
+        # Get error at the output layer or the last layer
+        ll = self.layers - 1
+        error = Y - A[ll]
+        E[ll] = error   
+        dZ[ll] = error * self.g_prime[ll](Z[ll]) 
+        
+        # Begin from the back, from the next to last layer
+        for i in range(self.layers-2, 0, -1):
+            E[i]  = np.dot(self.W[i+1].T, E[i+1])
+            dZ[i] = E[i] * self.g_prime[i](Z[i])
+       
+        # Adjust the weights 
+        m = Y.shape[1]  # number of samples
+        for i in range(ll, 0, -1):
+            self.W[i] += self.eta * np.dot(dZ[i], A[i-1].T) / m
+        return error
+         
+    def fit(self, X, y):
+        self.cost_ = [] 
+        self.m_samples = len(y)
+        Y = one_hot_encoding(y, self.net_arch[-1]) 
+        
+        for epoch in range(self.epochs): 
+            #if epoch % 20== 0:
+            #    print('Training epoch {}/{}'.format(epoch+1, self.epochs))
+
+            A0 = np.array(X, ndmin=2).T   # A0 : inputs, minimum 2d array
+            Y0 = np.array(Y, ndmin=2).T   # Y: targets
+
+            Z, A = self.forpass(A0)          # forward pass
+            cost = self.backprop(Z, A, Y0)   # back propagation
+            self.cost_.append(np.sqrt(np.sum(cost * cost)))
+        return self
+
+    def predict(self, X):  # used in plot_decsion_regions()          
+        Z, A2 = self.forpass(X)
+        A2 = np.array(A2[len(A2)-1])
+        return A2[-1] > 0.5
+    
+    def predict_(self, X): # used in evaluate() 
+        A0 = np.array(X, ndmin=2).T         # A0: inputs
+        Z, A = self.forpass(A0)             # forpass
+        return A[-1]                                       
+   
+    def evaluate(self, Xtest, ytest):       # fully vectorized calculation
+        m_samples = len(ytest)
+        scores = 0        
+        A3 = self.predict_(Xtest)
+        yhat = np.argmax(A3, axis = 0)
+        scores += np.sum(yhat == ytest)
+        return scores/m_samples * 100
