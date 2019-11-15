@@ -1241,7 +1241,7 @@ class MnistBGD(object):
  
 class MnistBGD_LS(object):
     """ Batch Gradient Descent with a simple learning schedule   """
-    def __init__(self, n_x, n_h1, n_y, eta = 0.1, epochs = 100, random_seed=1):
+    def __init__(self, n_x, n_h, n_y, eta = 0.1, epochs = 100, random_seed=1):
         """ 
         """
         self.n_x = n_x
@@ -1605,7 +1605,7 @@ class LogisticNeuron(object):
         self.eta = eta         # learning rate
         self.epochs = epochs
         self.random_seed = random_seed
-        self.print_cost = False
+        self.print_cost = print_cost
         
     # Define the cost function A2, y
     def CEcost(self, A2, Y):
