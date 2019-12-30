@@ -4,6 +4,104 @@
 # 2018.03.23 - creation
 # Use imp.reload(joy) after modified and %%writefile
 
+"""
+List of functions and classes
+
+- def iris_data(standardized=False, shuffled=False): 
+- def joy_data(standardized=False, shuffled=False):
+    - joy_data.txt 파일을 읽어옴. 
+    - joydata.txt파일과는 달리 두 개의 classes로 선형 분류 가능함
+
+- def joy_Ndata(standardized=False, shuffled=False):
+    - joy_dataNoise.txt 파일을 읽어옴. 
+- def joydata(standardized=False, shuffled=False):
+    - joydata.txt 파일을 읽어옴.
+    - joy_data.txt파일과는 달리 한 개의 data가 Noise로 섞여있어서, 
+      선형 분류가 가능하지 않음.
+- def joy_Ndata(standardized=False, shuffled=False):
+    - joy_dataNoise.txt 파일을 읽어옴.
+- def toy_data(standardized=False, shuffled=False):
+- def getXy(filename, bipolar=True, standardized=False, shuffled=False):
+
+- def planar_data():
+- def noisy_circles():
+- def noisy_moons():
+- def blobs():
+- def gaussian_quantiles():
+
+- def load_mnist(normalize=True, flatten=True):
+    - MNIST 데이터셋을 메모리로 빠르게 읽어 옮(pickle을 사용함)
+    - 현재 실행 위치에서 "data" 폴더에 MNIST 데이터셋이 존재하지 않으면 다운로드를 시도함.
+    - (Xtrain, ytrain), (Xtest, ytest) 두 튜플로 반환함. 
+    - normalized가 True이면, Xtrain/Xtest의 값은 0 ~ 1 사이 값으로 정규화함. 
+    - flatten가 True이면, Xtrain/Xtest는 (m, 784), False이면 Xtrain/Xtest는 (m, 28, 28)으로 반환
+
+- def append_mnist_rotation(X, y, n_images, degree): <br>
+    - 학습자료 X(m, 768)에서 n_images를 무작위로 선택하여 degree만큼 회전하고, X에 추가함. 
+    - X(m+n_images, 768), y(m + n_images,)를 반환
+
+- def read_mnist_csv(filename, display = True):
+    - Reads the MNSIT csv file and returns X and y
+- def save_mnist_csv(X, y, filename):
+    - Saves X, y into csv type file.
+
+- def show_mnist(image, inverted = False):
+- def show_mnist_grid(images, inverted = False, figsize = 10, ncols=10, maxgrid = 100):
+
+- def tanh(x)
+- def tanh_d(x)
+- def sigmoid(x)
+- def sigmoid_d(x)
+- def relu(x)
+- def relu_d(x)
+- def softmax(x)
+
+- def one_hot_encoding(y, n_y):
+- def one_hot_decoding(yhot):
+
+- def plot_xyw(x, y, W=None, X0=False, title='Perceptron', annotate=False, savefig=None):
+- def plot_xyc(x, y, clf=None, X0=False, annotate=False, savefig=None, xylabels=("x1", "x2")):
+- def plot_decision_regions(X, y, classifier, resolution=0.02):
+- def plot_decision_boundary(X, y, predict):
+
+- class Perceptron(object):
+- class AdalineGD(object):
+- class AdalineSGD(object):
+
+- class MnistBGD(object): Batch Gradient Descent for MNIST Dataset
+
+- class MnistBGD_LS(object): Batch Gradient Descent for MNIST Dataset with a Learning Schedule
+
+- class MnistSGD(object): MNIST 데이터셋을 확률적 경사하강법으로 0 ~ 9로 분류함
+
+- class MnistMiniBatchGD(object): MNIST MiniBatch Gradient Descent
+
+- class NeuralNetwork(): implements a three layer mneural net with backpropagation.
+
+- class LogisticNeuron(object): implements logistic regression using cross entropy 
+
+- class LogisticNeuron_stochastic(object): implements Logistic Regression using cross entropy with stochastic gradient descent
+
+- class DeepNeuralNet(object): implements a deep neural net. Users may specify any number of layers. net_arch consists of a number of neurons in each layer 
+
+- class DeepNeuralNet_BGD(object):
+"""
+    
+""" 
+A note for developers: 
+- To have the line numbers displayed in a code cell, use <esc> L
+- If you want line numbers only for code cells, there is a simpler approach. Select a code cell, open the Chrome/Firefox JavaScript console, type the following lines:
+
+var cell = Jupyter.notebook.get_selected_cell();
+var config = cell.config;
+var patch = {
+    CodeCell:{
+        cm_config:{lineNumbers:true}
+    }
+}
+config.update(patch)
+"""
+
 import matplotlib.pyplot as plt  
 import numpy as np
 import pandas as pd
@@ -428,6 +526,7 @@ def save_mnist_csv(X, y, filename):
             mydata = np.concatenate([[y[item]], mydata])  ### insert label in front ####
             mydata.astype(int)
             writer.writerow(mydata)
+        print()
         
     #print('X len={}, type={}, shape={}, y len={}, type={}, shape={}, mydata={}'.
            #format(len(X), type(X), X.shape, len(y), type(y), y.shape, type(mydata)))   
@@ -477,7 +576,7 @@ def read_mnist_csv(filename, display = True):
         X = X.reshape(n_images, -1)
         X= (X / 255.0 * 0.99) + 0.01           # normalized
     
-    print('csv normalized X.shape={}, y.shape={}'.format(X.shape, y.shape))
+    # print('csv normalized X.shape={}, y.shape={}'.format(X.shape, y.shape))
     return X, y 
 
 
